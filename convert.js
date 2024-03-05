@@ -2,21 +2,38 @@ import * as fs from 'fs';
 import { JSDOM } from 'jsdom';
 import { convertPostBuildScript } from './PostBuildHelper.js';
 
-const in_path = './test/config.xml';
-const out_path = './test/config_result.xml';
+/**
+ * Convert config.xml.
+ * @param {String} inPath Path to config.xml.
+ * @param {String} outPath Some output path (can be the same).
+ * @returns === true if everything was converted.
+ */
+export function convert(inPath, outPath) {
+	// Load your XML file
+	const xmlData = fs.readFileSync(inPath, 'utf-8');
 
-// Load your XML file
-const xmlData = fs.readFileSync(in_path, 'utf-8');
+	// Parse the XML
+	const dom = new JSDOM(xmlData, { contentType: 'application/xml' });
+	const document = dom.window.document;
 
-// Parse the XML
-const dom = new JSDOM(xmlData, { contentType: 'application/xml' });
-const document = dom.window.document;
+	// Convert
+	const {doneNodes, totalNodes} = convertPostBuildScript(document);
 
-// Convert
-convertPostBuildScript(document);
+	// Write the modified XML back to a file
+	if (doneNodes) {
+		let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
+		fs.writeFileSync(outPath, header + dom.serialize(), 'utf-8');
+	}
 
-// Write the modified XML back to a file
-let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
-fs.writeFileSync(out_path, header + dom.serialize(), 'utf-8');
-
-console.log(`XML modified and saved as "${out_path}"`);
+	if (totalNodes == 0) {
+		console.log(`[DEBUG] Nothing to convert in "${inPath}"`);
+	} else if (doneNodes == totalNodes) {
+		console.log(`[INFO] OK. Converted "${inPath}"`);
+		return true;
+	} else if (doneNodes != totalNodes) {
+		console.warn(`[WARN] Not fully converted. Converted ${doneNodes} of ${totalNodes} nodes in "${inPath}"`);
+	} else {
+		console.error(`[ERROR] What happend? ${doneNodes} of ${totalNodes} nodes in "${inPath}"`);
+	}
+	return {doneNodes, totalNodes};
+}

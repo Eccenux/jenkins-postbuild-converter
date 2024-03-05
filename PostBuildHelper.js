@@ -4,15 +4,19 @@
  */
 export function convertPostBuildScript(document) {
 	const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
-	if (oldNodes.length) {
+	const totalNodes = oldNodes?.length;
+	let doneNodes = 0;
+	if (oldNodes && oldNodes.length) {
 		for (let index = 0; index < oldNodes.length; index++) {
 			const node = oldNodes[index];
 			const newNode = convertConfig(document, node);
 			if (newNode) {
 				node.parentNode.replaceChild(newNode, node);
+				doneNodes++;
 			}
 		}
 	}
+	return {doneNodes, totalNodes};
 }
 
 // installed/destination versions (should probably work fine when actual version is higher)
@@ -37,6 +41,7 @@ function convertConfig(document, srcNode) {
 	let srcVersion = srcNode.getAttribute('plugin');
 	if (!srcVersion.startsWith('postbuildscript@0.')) {
 		console.warn(`[WARN] Unsupported version ${srcVersion}`);
+		return false;
 	}
 	// Tested with postbuildscript@0.17, but I'm guessing any `0.` should be fine...
 	console.log(`[INFO] Converting version: ${srcVersion}`);

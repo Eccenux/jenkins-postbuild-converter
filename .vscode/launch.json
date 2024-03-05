@@ -7,11 +7,11 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Run convert.js",
+			"name": "Test convert JS",
 			"skipFiles": [
 				"<node_internals>/**"
 			],
-			"program": "${workspaceFolder}\\convert.js"
+			"program": "${workspaceFolder}\\convert_test.js"
 		}
 	]
 }
