@@ -45,10 +45,13 @@ console.error(`\n\nFinal report:`);
 for (const e of errors) {
 	const {error, inFile} = e;
 	console.error(`[ERROR] Failed to convert "${inFile}".`);
-	fs.appendFileSync(errorListFile, inFile);
+	fs.appendFileSync(errorListFile, `${inFile}\n`);
 	fs.appendFileSync(errorFile, `\n\n[ERROR] Failed to convert "${inFile}"\n`);
 	// fs.appendFileSync(errorFile, error.toString());
 	// fs.appendFileSync(errorFile, '\n');
 	fs.appendFileSync(errorFile, error.stack);
 }
 console.log(`\n[INFO] Converted ${ok} of ${total}.`);
+if (errors.length) {
+	console.warn(`[WARN] More info: ${errorFile}.`);
+}
