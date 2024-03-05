@@ -8,7 +8,9 @@ export function convertPostBuildScript(document) {
 		for (let index = 0; index < oldNodes.length; index++) {
 			const node = oldNodes[index];
 			const newNode = convertConfig(document, node);
-			node.parentNode.replaceChild(newNode, node);
+			if (newNode) {
+				node.parentNode.replaceChild(newNode, node);
+			}
 		}
 	}
 }
@@ -31,8 +33,15 @@ function valueIsFalse(parentNode, selector) {
  * @returns {Element} converted node.
  */
 function convertConfig(document, srcNode) {
+	// Initial check
+	let srcVersion = srcNode.getAttribute('plugin');
+	if (!srcVersion.startsWith('postbuildscript@0.')) {
+		console.warn(`[WARN] Unsupported version ${srcVersion}`);
+	}
+	// Tested with postbuildscript@0.17, but I'm guessing any `0.` should be fine...
+	console.log(`[INFO] Converting version: ${srcVersion}`);
 
-	// TODO: should depend on scriptOnlyIfSuccess/scriptOnlyIfFailure
+	// TODO: (?) should depend on scriptOnlyIfSuccess/scriptOnlyIfFailure
 	let results = `
 					<results>
 						<string>SUCCESS</string>
