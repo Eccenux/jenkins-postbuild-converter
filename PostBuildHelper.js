@@ -1,8 +1,44 @@
+import { JSDOM } from 'jsdom';
+
+/**
+ * Convert config string to a string.
+ * 
+ * @param {String} xml Config XML string.
+ * @returns {output, doneNodes, totalNodes}
+ */
+export function convertXml(xml) {
+	let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
+	let totalNodes = 0;
+	let doneNodes = 0;
+	let output = xml.replace(/<org.jenkinsci.plugins.postbuildscript.PostBuildScript[^>]+>[\s\S]+?<\/org.jenkinsci.plugins.postbuildscript.PostBuildScript>/g, (tag) => {
+		totalNodes++;
+
+		// Parse the XML
+		const dom = new JSDOM(header + tag, { contentType: 'application/xml' });
+		const document = dom.window.document;
+		const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
+		const node = oldNodes[0];
+		const newNode = convertConfig(document, node);
+		if (newNode) {
+			doneNodes++;
+			return newNode.outerHTML;
+			// node.parentNode.replaceChild(newNode, node);
+			// return dom.serialize();
+		}
+
+		return tag;
+	});
+	return {output, doneNodes, totalNodes};
+}
+
 /**
  * Convert config document.
+ * 
+ * Note! This is NOT SAFE. Serialization might change other nodes and e.g. break shell scripts.
+ * 
  * @param {Document} document 
  */
-export function convertPostBuildScript(document) {
+export function convertDocument(document) {
 	const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
 	const totalNodes = oldNodes?.length;
 	let doneNodes = 0;

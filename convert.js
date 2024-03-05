@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import path from 'path';
-import { JSDOM } from 'jsdom';
-import { convertPostBuildScript } from './PostBuildHelper.js';
+import { convertXml } from './PostBuildHelper.js';
 
 /**
  * Convert config.xml.
@@ -13,17 +12,10 @@ export function convert(inPath, outPath) {
 	// Load your XML file
 	const xmlData = fs.readFileSync(inPath, 'utf-8');
 
-	// Parse the XML
-	const dom = new JSDOM(xmlData, { contentType: 'application/xml' });
-	const document = dom.window.document;
+	const {output, doneNodes, totalNodes} = convertXml(xmlData);
 
-	// Convert
-	const {doneNodes, totalNodes} = convertPostBuildScript(document);
-
-	// Write the modified XML back to a file
 	if (doneNodes) {
-		let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
-		fs.writeFileSync(outPath, header + dom.serialize(), 'utf-8');
+		fs.writeFileSync(outPath, output, 'utf-8');
 	}
 
 	if (totalNodes == 0) {

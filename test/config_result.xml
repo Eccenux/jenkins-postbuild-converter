@@ -40,8 +40,8 @@
     <org.korosoft.jenkins.plugin.rtp.RichTextPublisher plugin="rich-text-publisher-plugin@1.3">
       <stableText>== Skrócony log ==
 ${FILE:logs/short.log.wiki}</stableText>
-      <unstableText/>
-      <failedText/>
+      <unstableText></unstableText>
+      <failedText></failedText>
       <unstableAsStable>true</unstableAsStable>
       <failedAsStable>true</failedAsStable>
       <parserName>WikiText</parserName>
