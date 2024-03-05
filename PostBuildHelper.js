@@ -90,22 +90,33 @@ function convertConfig(document, srcNode) {
  * @param {Element} dstParent 
  */
 function convertStep(step, dstParent) {
-	// TODO: convert SystemGroovy
+	// convert SystemGroovy script
+	if (step.getAttribute('plugin').startsWith('groovy@1.')) {
+		convertGroovy(step);
+	}
 	dstParent.appendChild(step);
 }
 
-/*`
-        <hudson.plugins.groovy.SystemGroovy plugin="groovy@1.29">
-          <scriptSource class="hudson.plugins.groovy.FileScriptSource">
-            <scriptFile>/var/www/jenkins-groovy-helpers/JenkinsBuildHelper/UniwersalBuildChecker.groovy</scriptFile>
-          </scriptSource>
-          <bindings></bindings>
-          <classpath></classpath>
-        </hudson.plugins.groovy.SystemGroovy>
-
-							<hudson.plugins.groovy.SystemGroovy plugin="${groovyVersion}">
-								<source class="hudson.plugins.groovy.FileSystemScriptSource">
-									<scriptFile>/var/www/jenkins-groovy-helpers/JenkinsBuildHelper/UniwersalBuildChecker.groovy</scriptFile>
-								</source>
-							</hudson.plugins.groovy.SystemGroovy>
-`*/
+/**
+ * Convert SystemGroovy node.
+ * 
+ * Note. At this point it only works with SystemGroovy scripts from a file.
+ * 
+ * @param {Element} step
+ */
+function convertGroovy(step) {
+	const document = step.ownerDocument;
+	const oldSource = step.querySelector('scriptSource');
+	if (oldSource && oldSource.getAttribute('class', 'hudson.plugins.groovy.FileScriptSource')) {
+		step.setAttribute('plugin', groovyVersion);
+		step.removeChild(step.querySelector('bindings'));
+		step.removeChild(step.querySelector('classpath'));
+		let source = document.createElement('source');
+		// source.setAttribute('class', oldSource.getAttribute('class'));
+		source.setAttribute('class', 'hudson.plugins.groovy.FileSystemScriptSource');
+		source.appendChild(document.createTextNode('\n\t\t\t\t\t\t'));
+		source.appendChild(oldSource.querySelector('scriptFile'));
+		source.appendChild(document.createTextNode('\n\t\t\t\t\t'));
+		oldSource.parentElement.replaceChild(source, oldSource);
+	}
+}

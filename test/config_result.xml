@@ -23,12 +23,12 @@
 					</results>
 						<role>BOTH</role>
 						<buildSteps>
-							<hudson.plugins.groovy.SystemGroovy plugin="groovy@1.29">
-          <scriptSource class="hudson.plugins.groovy.FileScriptSource">
-            <scriptFile>/var/www/jenkins-groovy-helpers/JenkinsBuildHelper/UniwersalBuildChecker.groovy</scriptFile>
-          </scriptSource>
-          <bindings/>
-          <classpath/>
+							<hudson.plugins.groovy.SystemGroovy plugin="groovy@457.v99900cb_85593">
+          <source class="hudson.plugins.groovy.FileSystemScriptSource">
+						<scriptFile>/var/www/jenkins-groovy-helpers/JenkinsBuildHelper/UniwersalBuildChecker.groovy</scriptFile>
+					</source>
+          
+          
         </hudson.plugins.groovy.SystemGroovy>
 						</buildSteps>
 						<stopOnFailure>false</stopOnFailure>
