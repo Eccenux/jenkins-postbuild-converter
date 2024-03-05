@@ -1,5 +1,5 @@
 {
-	"sourceType": "module",
+	"type": "module",
 	"dependencies": {
 		"jsdom": "^24.0.0"
 	},

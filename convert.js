@@ -1,4 +1,4 @@
-import fs from 'fs';
+import * as fs from 'fs';
 import { JSDOM } from 'jsdom';
 import { convertPostBuildScript } from './PostBuildHelper.js';
 
@@ -16,6 +16,7 @@ const document = dom.window.document;
 convertPostBuildScript(document);
 
 // Write the modified XML back to a file
-fs.writeFileSync(out_path, dom.serialize(), 'utf-8');
+let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
+fs.writeFileSync(out_path, header + dom.serialize(), 'utf-8');
 
 console.log(`XML modified and saved as "${out_path}"`);

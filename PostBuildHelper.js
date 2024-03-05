@@ -3,15 +3,17 @@
  * @param {Document} document 
  */
 export function convertPostBuildScript(document) {
-	const oldNodes = document.querySelectorAll('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
+	const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
 	if (oldNodes.length) {
-		const newNode = convertConfig(document, node);
-		oldNodes.forEach(node => node.parentNode.replaceChild(node, newNode));
+		for (let index = 0; index < oldNodes.length; index++) {
+			const node = oldNodes[index];
+			const newNode = convertConfig(document, node);
+			node.parentNode.replaceChild(newNode, node);
+		}
 	}
-	document.body.appendChild(newNode);    
 }
 
-// installed versions (should probably work fine when actual version is higher)
+// installed/destination versions (should probably work fine when actual version is higher)
 let postbuildVersion = 'postbuildscript@3.2.0-550.v88192b_d3e922';
 let groovyVersion = 'groovy@457.v99900cb_85593';
 
@@ -66,16 +68,18 @@ function convertConfig(document, srcNode) {
 	`;
 	const template = document.createElement('template');
 	template.innerHTML = newStructureXML.trim();
-	const newNode = template.content.firstChild;
+	const newNode = template.firstChild;
 
 	// Convert/copy steps
 	let srcSteps = srcNode.querySelector('buildSteps');
 	let dstSteps = newNode.querySelector('buildSteps buildSteps');
-	for (let index = 0; index < srcSteps.childNodes.length; index++) {
-		const element = srcSteps.childNodes[index];
+	let parentIndent = '						';
+	for (let index = 0; index < srcSteps.children.length; index++) {
+		const element = srcSteps.children[index];
+		dstSteps.appendChild(document.createTextNode('\n\t' + parentIndent));
 		convertStep(element, dstSteps);
 	}
-
+	dstSteps.appendChild(document.createTextNode('\n' + parentIndent));
 
 	return newNode;
 }
@@ -86,6 +90,7 @@ function convertConfig(document, srcNode) {
  * @param {Element} dstParent 
  */
 function convertStep(step, dstParent) {
+	// TODO: convert SystemGroovy
 	dstParent.appendChild(step);
 }
 
