@@ -157,7 +157,8 @@ function convertStep(step, dstParent) {
 function convertGroovy(step) {
 	const document = step.ownerDocument;
 	const oldSource = step.querySelector('scriptSource');
-	if (oldSource && oldSource.getAttribute('class', 'hudson.plugins.groovy.FileScriptSource')) {
+	const file = oldSource?.querySelector('scriptFile');
+	if (oldSource && file && oldSource.getAttribute('class', 'hudson.plugins.groovy.FileScriptSource')) {
 		step.setAttribute('plugin', groovyVersion);
 		step.removeChild(step.querySelector('bindings'));
 		step.removeChild(step.querySelector('classpath'));
@@ -165,7 +166,7 @@ function convertGroovy(step) {
 		// source.setAttribute('class', oldSource.getAttribute('class'));
 		source.setAttribute('class', 'hudson.plugins.groovy.FileSystemScriptSource');
 		source.appendChild(document.createTextNode('\n\t\t\t\t\t\t'));
-		source.appendChild(oldSource.querySelector('scriptFile'));
+		source.appendChild(file);
 		source.appendChild(document.createTextNode('\n\t\t\t\t\t'));
 		oldSource.parentElement.replaceChild(source, oldSource);
 	}
