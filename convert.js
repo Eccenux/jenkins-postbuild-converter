@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import path from 'path';
 import { JSDOM } from 'jsdom';
 import { convertPostBuildScript } from './PostBuildHelper.js';
 
@@ -37,3 +38,35 @@ export function convert(inPath, outPath) {
 	}
 	return {doneNodes, totalNodes};
 }
+
+/**
+ * Read dir for configs.
+ * @param {String} baseDir Jobs dir (contains job dirs).
+ * @param {String} inName The conf file name.
+ */
+export function readConfigs(baseDir, inName = 'config.xml') {
+	const files = [];
+	const errors = [];
+	try {
+		// Read all subdirectories in the base directory
+		const subDirs = fs.readdirSync(baseDir, { withFileTypes: true });
+
+		// Filter directories and iterate over them
+		for (const dirent of subDirs.filter(dirent => dirent.isDirectory())) {
+			const subDirPath = path.join(baseDir, dirent.name);
+			const configPath = path.join(subDirPath, inName);
+			// Check if config.xml exists in the subdirectory
+			try {
+				fs.accessSync(configPath);
+				files.push(configPath);
+			} catch (error) {
+				errors.push({error, configPath});
+			}
+		}
+	} catch (error) {
+		console.error(`[ERROR] Error processing job configurations: ${error}`);
+		errors.push({error});
+	}
+	return {files, errors};
+}
+

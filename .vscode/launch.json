@@ -7,6 +7,15 @@
 		{
 			"type": "node",
 			"request": "launch",
+			"name": "Run main JS",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"program": "${workspaceFolder}\\main.js"
+		},
+		{
+			"type": "node",
+			"request": "launch",
 			"name": "Test convert JS",
 			"skipFiles": [
 				"<node_internals>/**"
