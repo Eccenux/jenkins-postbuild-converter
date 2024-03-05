@@ -3,10 +3,11 @@ import { JSDOM } from 'jsdom';
 /**
  * Convert config string to a string.
  * 
+ * @param {Array} warnings Array for warnings.
  * @param {String} xml Config XML string.
  * @returns {output, doneNodes, totalNodes}
  */
-export function convertXml(xml) {
+export function convertXml(xml, warnings = []) {
 	let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
 	let totalNodes = 0;
 	let doneNodes = 0;
@@ -18,7 +19,7 @@ export function convertXml(xml) {
 		const document = dom.window.document;
 		const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
 		const node = oldNodes[0];
-		const newNode = convertConfig(document, node);
+		const newNode = convertConfig(document, node, warnings);
 		if (newNode) {
 			doneNodes++;
 			return newNode.outerHTML;
@@ -36,16 +37,17 @@ export function convertXml(xml) {
  * 
  * Note! This is NOT SAFE. Serialization might change other nodes and e.g. break shell scripts.
  * 
+ * @param {Array} warnings Array for warnings.
  * @param {Document} document 
  */
-export function convertDocument(document) {
+export function convertDocument(document, warnings = []) {
 	const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
 	const totalNodes = oldNodes?.length;
 	let doneNodes = 0;
 	if (oldNodes && oldNodes.length) {
 		for (let index = 0; index < oldNodes.length; index++) {
 			const node = oldNodes[index];
-			const newNode = convertConfig(document, node);
+			const newNode = convertConfig(document, node, warnings);
 			if (newNode) {
 				node.parentNode.replaceChild(newNode, node);
 				doneNodes++;
@@ -66,17 +68,23 @@ function valueIsFalse(parentNode, selector) {
 	return element && element.textContent === 'false';
 }
 
+function warningInfo(warnings, message) {
+	warnings.push(message);
+	console.warn(message);
+}
+
 /**
  * Create new build config.
+ * @param {Array} warnings Array for warnings.
  * @param {Document} document Parent document.
  * @param {Element} srcNode Source node.
  * @returns {Element} converted node.
  */
-function convertConfig(document, srcNode) {
+function convertConfig(document, srcNode, warnings = []) {
 	// Initial check
 	let srcVersion = srcNode.getAttribute('plugin');
 	if (!srcVersion.startsWith('postbuildscript@0.')) {
-		console.warn(`[WARN] Unsupported version ${srcVersion}`);
+		warningInfo(warnings, `[WARN] Unsupported version ${srcVersion}`);
 		return false;
 	}
 	// Tested with postbuildscript@0.17, but I'm guessing any `0.` should be fine...
@@ -92,10 +100,10 @@ function convertConfig(document, srcNode) {
 	`.trim();
 	// check values for now
 	if (!valueIsFalse(srcNode, 'scriptOnlyIfSuccess')) {
-		console.warn('scriptOnlyIfSuccess is not false');
+		warningInfo(warnings, '[WARN] scriptOnlyIfSuccess is not false');
 	}
 	if (!valueIsFalse(srcNode, 'scriptOnlyIfFailure')) {
-		console.warn('scriptOnlyIfFailure is not false');
+		warningInfo(warnings, '[WARN] scriptOnlyIfFailure is not false');
 	}
 
 	// Create and add the new structure
@@ -127,7 +135,7 @@ function convertConfig(document, srcNode) {
 	for (let index = 0; index < srcSteps.children.length; index++) {
 		const element = srcSteps.children[index];
 		dstSteps.appendChild(document.createTextNode('\n\t' + parentIndent));
-		convertStep(element, dstSteps);
+		convertStep(element, dstSteps, warnings);
 	}
 	dstSteps.appendChild(document.createTextNode('\n' + parentIndent));
 
@@ -136,13 +144,17 @@ function convertConfig(document, srcNode) {
 
 /**
  * Convert build node.
+ * @param {Array} warnings
  * @param {Element} step
  * @param {Element} dstParent 
  */
-function convertStep(step, dstParent) {
+function convertStep(step, dstParent, warnings = []) {
+	const plugin = step.getAttribute('plugin');
 	// convert SystemGroovy script
-	if (step.getAttribute('plugin').startsWith('groovy@1.')) {
-		convertGroovy(step);
+	if (plugin.startsWith('groovy@1.')) {
+		convertGroovy(step, warnings);
+	} else {
+		warnings.push(`Unknown plugin ${plugin}`);
 	}
 	dstParent.appendChild(step);
 }
@@ -152,13 +164,15 @@ function convertStep(step, dstParent) {
  * 
  * Note. At this point it only works with SystemGroovy scripts from a file.
  * 
+ * @param {Array} warnings
  * @param {Element} step
  */
-function convertGroovy(step) {
+function convertGroovy(step, warnings = []) {
 	const document = step.ownerDocument;
 	const oldSource = step.querySelector('scriptSource');
 	const file = oldSource?.querySelector('scriptFile');
-	if (oldSource && file && oldSource.getAttribute('class', 'hudson.plugins.groovy.FileScriptSource')) {
+	const groovyClass = oldSource?.getAttribute('class');
+	if (oldSource && file && groovyClass === 'hudson.plugins.groovy.FileScriptSource') {
 		step.setAttribute('plugin', groovyVersion);
 		step.removeChild(step.querySelector('bindings'));
 		step.removeChild(step.querySelector('classpath'));
@@ -169,5 +183,7 @@ function convertGroovy(step) {
 		source.appendChild(file);
 		source.appendChild(document.createTextNode('\n\t\t\t\t\t'));
 		oldSource.parentElement.replaceChild(source, oldSource);
+	} else {
+		warnings.push(`Unknown/risky groovy type; class:${groovyClass}.`);
 	}
 }

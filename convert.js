@@ -12,7 +12,8 @@ export function convert(inPath, outPath) {
 	// Load your XML file
 	const xmlData = fs.readFileSync(inPath, 'utf-8');
 
-	const {output, doneNodes, totalNodes} = convertXml(xmlData);
+	const warnings = [];
+	const {output, doneNodes, totalNodes} = convertXml(xmlData, warnings);
 
 	if (doneNodes) {
 		fs.writeFileSync(outPath, output, 'utf-8');
@@ -21,14 +22,17 @@ export function convert(inPath, outPath) {
 	if (totalNodes == 0) {
 		console.log(`[DEBUG] Nothing to convert in "${inPath}"`);
 	} else if (doneNodes == totalNodes) {
-		console.log(`[INFO] OK. Converted "${inPath}"`);
-		return true;
+		if (!warnings.length) {
+			console.log(`[INFO] OK. Converted "${inPath}"`);
+			return true;
+		}
+		console.log(`[INFO] Converted "${inPath}" with warning(s).`);
 	} else if (doneNodes != totalNodes) {
 		console.warn(`[WARN] Not fully converted. Converted ${doneNodes} of ${totalNodes} nodes in "${inPath}"`);
 	} else {
 		console.error(`[ERROR] What happend? ${doneNodes} of ${totalNodes} nodes in "${inPath}"`);
 	}
-	return {doneNodes, totalNodes};
+	return {doneNodes, totalNodes, warnings};
 }
 
 /**

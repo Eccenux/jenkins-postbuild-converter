@@ -23,14 +23,18 @@ const configs = listRaw
 
 // Main loop
 const errors = [];
+const warnings = [];
 let ok = 0;
 let total = 0;
 for (const inFile of configs) {
 	const inPath = path.join(jobsDir, inFile);
-	const outPath = inPath;
+	const outPath = inPath + '2.xml';
 	total++;
 	try {
-		convert(inPath, outPath);
+		const res = convert(inPath, outPath);
+		if (typeof res === 'object' && Array.isArray(res.warnings) && res.warnings.length) {
+			warnings.push({inFile, infos:res.warnings});
+		}
 		ok++;
 	} catch (error) {
 		errors.push({error, inFile});
@@ -50,6 +54,11 @@ for (const e of errors) {
 	// fs.appendFileSync(errorFile, error.toString());
 	// fs.appendFileSync(errorFile, '\n');
 	fs.appendFileSync(errorFile, error.stack);
+}
+for (const warn of warnings) {
+	const {infos, inFile} = warn;
+	console.warn(`[WARN] Problem converting "${inFile}".`);
+	console.warn(infos.join('\n'));
 }
 console.log(`\n[INFO] Converted ${ok} of ${total}.`);
 if (errors.length) {
