@@ -1,6 +1,6 @@
-const fs = require('fs');
-const { JSDOM } = require('jsdom');
-const { convertPostBuildScript } = require('./PostBuildHelper');
+import fs from 'fs';
+import { JSDOM } from 'jsdom';
+import { convertPostBuildScript } from './PostBuildHelper.js';
 
 const in_path = './test/config.xml';
 const out_path = './test/config_result.xml';
