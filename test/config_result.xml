@@ -10,7 +10,8 @@
       <fingerprint>false</fingerprint>
       <defaultExcludes>true</defaultExcludes>
     </hudson.tasks.ArtifactArchiver>
-    <org.jenkinsci.plugins.postbuildscript.PostBuildScript plugin="postbuildscript@3.2.0-550.v88192b_d3e922">
+    
+		<org.jenkinsci.plugins.postbuildscript.PostBuildScript plugin="postbuildscript@3.2.0-550.v88192b_d3e922">
 			<config>
 				<scriptFiles/>
 				<groovyScripts/>
@@ -23,20 +24,21 @@
 					</results>
 						<role>BOTH</role>
 						<buildSteps>
-							<hudson.plugins.groovy.SystemGroovy plugin="groovy@457.v99900cb_85593">
-          <source class="hudson.plugins.groovy.FileSystemScriptSource">
-						<scriptFile>/var/www/jenkins-groovy-helpers/JenkinsBuildHelper/UniwersalBuildChecker.groovy</scriptFile>
-					</source>
-          
-          
+        <hudson.plugins.groovy.SystemGroovy plugin="groovy@1.29">
+          <scriptSource class="hudson.plugins.groovy.FileScriptSource">
+            <scriptFile>/var/www/jenkins-groovy-helpers/JenkinsBuildHelper/UniwersalBuildChecker.groovy</scriptFile>
+          </scriptSource>
+          <bindings></bindings>
+          <classpath></classpath>
         </hudson.plugins.groovy.SystemGroovy>
-						</buildSteps>
+      </buildSteps>
 						<stopOnFailure>false</stopOnFailure>
 					</org.jenkinsci.plugins.postbuildscript.model.PostBuildStep>
 				</buildSteps>
 				<markBuildUnstable>false</markBuildUnstable>
 			</config>
 		</org.jenkinsci.plugins.postbuildscript.PostBuildScript>
+	
     <org.korosoft.jenkins.plugin.rtp.RichTextPublisher plugin="rich-text-publisher-plugin@1.3">
       <stableText>== Skrócony log ==
 ${FILE:logs/short.log.wiki}</stableText>

@@ -4,8 +4,8 @@ import { convert } from './convert.js';
 
 const listFile = path.join('io', 'list.txt');
 const jobsDir = path.join('io', 'jobs');
-const jobsOkDir = path.join('io', 'jobs_ok');
-const jobsProblemDir = path.join('io', 'jobs_warn');
+const jobsOkDir = path.join('io', 'jobs_ok'); // Note! This will be removed on each run.
+const jobsProblemDir = path.join('io', 'jobs_warn'); // Note! This will be removed on each run.
 const errorFile = path.join('io', 'error-log.txt');
 const errorListFile = path.join('io', 'error-list.txt');
 
@@ -22,6 +22,12 @@ const configs = listRaw
 	.split('\n')
 ;
 // console.log(configs);
+
+// Clear output dirs
+fs.rmSync(jobsProblemDir, { recursive: true });
+fs.rmSync(jobsOkDir, { recursive: true });
+fs.mkdirSync(jobsProblemDir);
+fs.mkdirSync(jobsOkDir);
 
 // Main loop
 const errors = [];

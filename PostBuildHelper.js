@@ -1,4 +1,4 @@
-import { JSDOM } from 'jsdom';
+// import { JSDOM } from 'jsdom';
 
 /**
  * Convert config string to a string.
@@ -8,23 +8,16 @@ import { JSDOM } from 'jsdom';
  * @returns {output, doneNodes, totalNodes}
  */
 export function convertXml(xml, warnings = []) {
-	let header = `<?xml version='1.0' encoding='UTF-8'?>\n`;
 	let totalNodes = 0;
 	let doneNodes = 0;
-	let output = xml.replace(/<org.jenkinsci.plugins.postbuildscript.PostBuildScript[^>]+>[\s\S]+?<\/org.jenkinsci.plugins.postbuildscript.PostBuildScript>/g, (tag) => {
+	let output = xml.replace(/<org.jenkinsci.plugins.postbuildscript.PostBuildScript([^>]+)>[\s\S]+?<\/org.jenkinsci.plugins.postbuildscript.PostBuildScript>/g, (tag, attr) => {
 		totalNodes++;
 
 		// Parse the XML
-		const dom = new JSDOM(header + tag, { contentType: 'application/xml' });
-		const document = dom.window.document;
-		const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
-		const node = oldNodes[0];
-		const newNode = convertConfig(document, node, warnings);
-		if (newNode) {
+		const newXml = convertPart(tag, attr, warnings);
+		if (newXml) {
 			doneNodes++;
-			return newNode.outerHTML;
-			// node.parentNode.replaceChild(newNode, node);
-			// return dom.serialize();
+			return newXml;
 		}
 
 		return tag;
@@ -32,57 +25,60 @@ export function convertXml(xml, warnings = []) {
 	return {output, doneNodes, totalNodes};
 }
 
-/**
- * Convert config document.
- * 
- * Note! This is NOT SAFE. Serialization might change other nodes and e.g. break shell scripts.
- * 
- * @param {Array} warnings Array for warnings.
- * @param {Document} document 
- */
-export function convertDocument(document, warnings = []) {
-	const oldNodes = document.getElementsByTagName('org.jenkinsci.plugins.postbuildscript.PostBuildScript');
-	const totalNodes = oldNodes?.length;
-	let doneNodes = 0;
-	if (oldNodes && oldNodes.length) {
-		for (let index = 0; index < oldNodes.length; index++) {
-			const node = oldNodes[index];
-			const newNode = convertConfig(document, node, warnings);
-			if (newNode) {
-				node.parentNode.replaceChild(newNode, node);
-				doneNodes++;
-			}
-		}
-	}
-	return {doneNodes, totalNodes};
-}
-
 // installed/destination versions (should probably work fine when actual version is higher)
 let postbuildVersion = 'postbuildscript@3.2.0-550.v88192b_d3e922';
-let groovyVersion = 'groovy@457.v99900cb_85593';
+// let groovyVersion = 'groovy@457.v99900cb_85593';
 
 
-/** Simple bool check helper. */
-function valueIsFalse(parentNode, selector) {
-	const element = parentNode.querySelector(selector);
-	return element && element.textContent === 'false';
+/**
+ * Simple tag value check.
+ * 
+ * Note! The tag is assumed to be a simple tag with either no other tags inside or not self-contained.
+ * Bad (won't work): <div><div></div></div>
+ * OK (should work): <a href="#">abc</a>
+ * 
+ * This function will not work for getting attrs on self closed tags.
+ * 
+ * @param {String} xml
+ * @param {String} tagName Simple tag (with short-ish value).
+ * @returns {Array} Array of {attr, content} (empty array if no tag was found).
+ */
+function getTagValue(xml, tagName) {
+	const values = [];
+	xml.replace(new RegExp(`<${tagName}(\\s[^>]+)?>([\\s\\S]*?)<\\/${tagName}>`, 'g'), (tag, attr, content) => {
+		values.push({tag, attr, content});
+	});
+	return values;
 }
 
+/** Warn shorthand. */
 function warningInfo(warnings, message) {
 	warnings.push(message);
 	console.warn(message);
 }
 
+/** Simple parser (doesn't work for non-xml attrs - without value). */
+function attrParse(attrString) {
+	let attrs = {};
+	if (typeof attrString == 'string' && attrString.length >= 2) {
+		attrString.replace(/([\w.]+)\s*=\s*['"]([^'"]+)['"]/g, (a, name, value) => {
+			attrs[name] = value;
+		});
+	}
+	return attrs;
+}
+
 /**
  * Create new build config.
+ * @param {String} postBuildXml The postbuildscript tag (outer xml).
+ * @param {String} attrString Attribute(s).
  * @param {Array} warnings Array for warnings.
- * @param {Document} document Parent document.
- * @param {Element} srcNode Source node.
- * @returns {Element} converted node.
+ * @returns {String} converted tag.
  */
-function convertConfig(document, srcNode, warnings = []) {
+function convertPart(postBuildXml, attrString, warnings = []) {
 	// Initial check
-	let srcVersion = srcNode.getAttribute('plugin');
+	let attrs = attrParse(attrString);
+	let srcVersion = attrs.plugin;
 	if (!srcVersion.startsWith('postbuildscript@0.')) {
 		warningInfo(warnings, `[WARN] Unsupported version ${srcVersion}`);
 		return false;
@@ -99,15 +95,18 @@ function convertConfig(document, srcNode, warnings = []) {
 					</results>
 	`.trim();
 	// check values for now
-	if (!valueIsFalse(srcNode, 'scriptOnlyIfSuccess')) {
-		warningInfo(warnings, '[WARN] scriptOnlyIfSuccess is not false');
+	let values;
+	values = getTagValue(postBuildXml, 'scriptOnlyIfSuccess');
+	if (values.length != 1 || values[0].content !== "false") {
+		warningInfo(warnings, '[WARN] scriptOnlyIfSuccess is not false: ' + JSON.stringify(values.map(v=>v.content)));
 	}
-	if (!valueIsFalse(srcNode, 'scriptOnlyIfFailure')) {
-		warningInfo(warnings, '[WARN] scriptOnlyIfFailure is not false');
+	values = getTagValue(postBuildXml, 'scriptOnlyIfFailure');
+	if (values.length != 1 || values[0].content !== "false") {
+		warningInfo(warnings, '[WARN] scriptOnlyIfFailure is not false: ' + JSON.stringify(values.map(v=>v.content)));
 	}
 
 	// Create and add the new structure
-	let newStructureXML = `
+	let newStructureTpl = (buildSteps) => `
 		<org.jenkinsci.plugins.postbuildscript.PostBuildScript plugin="${postbuildVersion}">
 			<config>
 				<scriptFiles/>
@@ -116,7 +115,7 @@ function convertConfig(document, srcNode, warnings = []) {
 					<org.jenkinsci.plugins.postbuildscript.model.PostBuildStep>
 						${results}
 						<role>BOTH</role>
-						<buildSteps></buildSteps>
+						${buildSteps}
 						<stopOnFailure>false</stopOnFailure>
 					</org.jenkinsci.plugins.postbuildscript.model.PostBuildStep>
 				</buildSteps>
@@ -124,22 +123,22 @@ function convertConfig(document, srcNode, warnings = []) {
 			</config>
 		</org.jenkinsci.plugins.postbuildscript.PostBuildScript>
 	`;
-	const template = document.createElement('template');
-	template.innerHTML = newStructureXML.trim();
-	const newNode = template.firstChild;
 
 	// Convert/copy steps
-	let srcSteps = srcNode.querySelector('buildSteps');
-	let dstSteps = newNode.querySelector('buildSteps buildSteps');
-	let parentIndent = '						';
-	for (let index = 0; index < srcSteps.children.length; index++) {
-		const element = srcSteps.children[index];
-		dstSteps.appendChild(document.createTextNode('\n\t' + parentIndent));
-		convertStep(element, dstSteps, warnings);
+	let srcSteps = getTagValue(postBuildXml, 'buildSteps');
+	if (srcSteps.length == 0) {
+		warningInfo(warnings, `[WARN] Build steps are empty/missing, this is weird...`)
 	}
-	dstSteps.appendChild(document.createTextNode('\n' + parentIndent));
+	else if (srcSteps.length > 1) {
+		warningInfo(warnings, `[WARN] There are many step tags (${srcSteps.length}), this is weird...`)
+	}
+	let dstSteps = '';
+	for (let step of srcSteps) {
+		// convertStep(step, dstSteps, warnings);
+		dstSteps += step.tag;
+	}
 
-	return newNode;
+	return newStructureTpl(dstSteps);
 }
 
 /**
@@ -147,7 +146,7 @@ function convertConfig(document, srcNode, warnings = []) {
  * @param {Array} warnings
  * @param {Element} step
  * @param {Element} dstParent 
- */
+ *
 function convertStep(step, dstParent, warnings = []) {
 	const plugin = step.getAttribute('plugin');
 	// convert SystemGroovy script
@@ -166,7 +165,7 @@ function convertStep(step, dstParent, warnings = []) {
  * 
  * @param {Array} warnings
  * @param {Element} step
- */
+ *
 function convertGroovy(step, warnings = []) {
 	const document = step.ownerDocument;
 	const oldSource = step.querySelector('scriptSource');
@@ -187,3 +186,4 @@ function convertGroovy(step, warnings = []) {
 		warnings.push(`Unknown/risky groovy type; class:${groovyClass}.`);
 	}
 }
+/**/
