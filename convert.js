@@ -17,6 +17,9 @@ export function convert(inPath, outPath) {
 
 	if (doneNodes) {
 		fs.writeFileSync(outPath, output, 'utf-8');
+		if (xmlData.length > output.length) {
+			warnings.push(`[WARN] The output shrank which is unusual (it should grow) in:${xmlData.length} > out:${output.length}`);
+		}
 	}
 
 	if (totalNodes == 0) {
