@@ -4,6 +4,8 @@ import { convert } from './convert.js';
 
 const listFile = path.join('io', 'list.txt');
 const jobsDir = path.join('io', 'jobs');
+const jobsOkDir = path.join('io', 'jobs_ok');
+const jobsProblemDir = path.join('io', 'jobs_warn');
 const errorFile = path.join('io', 'error-log.txt');
 const errorListFile = path.join('io', 'error-list.txt');
 
@@ -28,14 +30,22 @@ let ok = 0;
 let total = 0;
 for (const inFile of configs) {
 	const inPath = path.join(jobsDir, inFile);
-	const outPath = inPath + '2.xml';
+	const outPath = path.join(jobsProblemDir, inFile);
+
+	const subdir = path.dirname(inFile);
+	const outDirPath = path.join(jobsProblemDir, subdir);
+	const outOkDirPath = path.join(jobsOkDir, subdir);
+
 	total++;
 	try {
+		fs.mkdirSync(outDirPath);
 		const res = convert(inPath, outPath);
 		if (typeof res === 'object' && Array.isArray(res.warnings) && res.warnings.length) {
 			warnings.push({inFile, infos:res.warnings});
+		} else {
+			ok++;
+			fs.renameSync(outDirPath, outOkDirPath);
 		}
-		ok++;
 	} catch (error) {
 		errors.push({error, inFile});
 		console.error(`[ERROR] Failed to convert "${inFile}".`);
